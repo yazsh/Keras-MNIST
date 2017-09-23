@@ -17,6 +17,9 @@ else:
     # Handle target environment that doesn't support HTTPS verification
     ssl._create_default_https_context = _create_unverified_https_context
 
+epochs = 10
+steps_per_epoch = 120
+batch_size = 10
 
 preTrained_model = VGG16(include_top=False,weights='imagenet')
 datagen = ImageDataGenerator(
@@ -28,19 +31,20 @@ datagen = ImageDataGenerator(
 generator = datagen.flow_from_directory(
         '/Users/Yazen Shunnar/Desktop/Pizza1/',
         target_size=(244, 244),
-        batch_size=32,
+        batch_size=batch_size,
         class_mode='binary',  # this means our generator will only yield batches of data, no labels
         shuffle=False)
 
 
 topModel = preTrained_model.output
 topModel = ks.layers.GlobalAveragePooling2D()(topModel)
-topModel = ks.layers.Dense(50,activation='relu')(topModel)
-topModel = ks.layers.Dense(50, activation='relu')(topModel)
-topModel = ks.layers.Dropout(0.5)(topModel)
-topModel = ks.layers.Dense(50, activation='relu')(topModel)
 topModel = ks.layers.Dense(1, activation='sigmoid')(topModel)
-model = Model(input=preTrained_model.input, output=topModel)
+# topModel = ks.layers.Dense(50,activation='relu')(topModel)
+# topModel = ks.layers.Dense(50, activation='relu')(topModel)
+# topModel = ks.layers.Dropout(0.5)(topModel)
+# topModel = ks.layers.Dense(50, activation='relu')(topModel)
+model = Model(inputs=preTrained_model.input, outputs=topModel)
+
 
 for layer in model.layers[:25]:
     layer.trainable = False
@@ -50,11 +54,12 @@ model.compile(loss='binary_crossentropy',
               optimizer=ks.optimizers.SGD(lr=1e-4, momentum=0.9),
               metrics=['accuracy'])
 
-model.fit_generator(generator,steps_per_epoch=50,epochs=1)
+model.fit_generator(generator,steps_per_epoch=steps_per_epoch,epochs=epochs)
 
 
 def predictImages(model, path, file_count, name):
-    print(name)
+    print('\n')
+    sum1 = 0
     for count in range(0,file_count):
         img_path = path + '/pizza' + str(count) + '.jpeg'
         img = image.load_img(img_path, target_size=(224, 224))
@@ -63,12 +68,19 @@ def predictImages(model, path, file_count, name):
         x = preprocess_input(x)
 
         preds = model.predict(x)
+        sum1 += np.round(preds)
         print(preds)
         # decode the results into a list of tuples (class, description, probability)
         # (one such list for each sample in the batch)
         # print('Iter:' ,str(count), decode_predictions(model.predict(x), top=1)[0])
-    print(name)
-    print('\n\n\n')
+    if(name == 'cheese'):
+
+
+        print(name + ":  " + str(sum1/file_count))
+    else:
+        print(name + ":  " + str(1 - sum1/file_count))
+
+    print('\n\n')
 
 # model.fit_generator(generate_arrays_from_file(generate_arrays_from_file('/Users/yazen/Desktop/datasets/cheesePizza'), steps_per_epoch=10000, epochs=10)
 
